@@ -14,6 +14,12 @@
       font-size: 24px;
       font-weight: bold;
     }
+    .input-section {
+      margin-bottom: 30px;
+      border: 1px solid #ddd;
+      padding: 20px;
+      border-radius: 5px;
+    }
     textarea {
       width: 100%;
       height: 200px;
@@ -28,10 +34,25 @@
       padding: 10px 20px;
       font-size: 14px;
       margin-top: 10px;
+      margin-right: 10px;
       cursor: pointer;
     }
     button:hover {
       background-color: #555;
+    }
+    button.generate {
+      background-color: #4CAF50;
+    }
+    button.generate:hover {
+      background-color: #45a049;
+    }
+    .accounts-list {
+      background-color: #f9f9f9;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 15px;
+      max-height: 200px;
+      overflow-y: auto;
     }
     a#download-link {
       display: none;
@@ -40,21 +61,43 @@
       color: #2a5885;
       text-decoration: underline;
     }
+    .status {
+      font-weight: bold;
+      color: #4CAF50;
+      margin-top: 10px;
+    }
   </style>
 </head>
 <body>
-  <h1>0차 지인의 팔로잉 입력</h1>
-  <p>트위터에서 복사한 팔로잉 목록을 아래에 붙여넣으세요.</p>
-  <textarea id="input" placeholder="예시:\n홍길동\n@hong123\n나를 팔로우합니다\n..."></textarea>
-  <br>
-  <button onclick="generateChecker()">확인기 만들기</button>
-  <br>
+  <h1>0차 지인들의 팔로잉 통합 입력</h1>
+  <p>여러 명의 0차 지인 팔로잉 목록을 차례로 추가해서 통합 확인기를 만드세요.</p>
+  
+  <div class="input-section">
+    <h3>팔로잉 목록 입력</h3>
+    <p>트위터에서 복사한 팔로잉 목록을 아래에 붙여넣으세요.</p>
+    <textarea id="input" placeholder="예시:\n홍길동\n@hong123\n나를 팔로우합니다\n..."></textarea>
+    <br>
+    <button onclick="addAccounts()">이 목록 추가하기</button>
+    <button onclick="clearAll()">전체 초기화</button>
+    
+    <div id="status" class="status"></div>
+  </div>
+
+  <div class="input-section">
+    <h3>추가된 계정들</h3>
+    <div id="accountsList" class="accounts-list">아직 추가된 계정이 없습니다.</div>
+    <p><strong>총 <span id="totalCount">0</span>개 계정이 추가되었습니다.</strong></p>
+    
+    <button class="generate" onclick="generateChecker()">통합 확인기 만들기</button>
+  </div>
+  
   <a id="download-link" download="checker.html"></a>
 
   <script>
-    function generateChecker() {
-      console.log('generateChecker 호출됨');
-      
+    let allAccounts = new Set(); // 중복 제거를 위해 Set 사용
+    let accountsData = []; // 실제 데이터 저장
+
+    function addAccounts() {
       const input = document.getElementById('input').value;
       if (!input.trim()) {
         alert('입력된 내용이 없습니다!');
@@ -62,27 +105,78 @@
       }
       
       const lines = input.split('\n');
-      const accounts = [];
+      let newAccountsCount = 0;
       
       for (let i = 0; i < lines.length; i++) {
         if (lines[i + 2] && lines[i + 2].includes('나를 팔로우합니다')) {
           const name = lines[i]?.trim() || '';
           const username = lines[i + 1]?.trim() || '';
           if (name && username) {
-            accounts.push({name: name, username: username});
+            const accountKey = username; // username으로 중복 체크
+            if (!allAccounts.has(accountKey)) {
+              allAccounts.add(accountKey);
+              accountsData.push({name: name, username: username});
+              newAccountsCount++;
+            }
           }
         }
       }
 
-      if (accounts.length === 0) {
-        alert('팔로잉 계정을 찾을 수 없습니다. 형식을 확인해주세요.');
+      if (newAccountsCount === 0) {
+        alert('새로 추가된 계정이 없습니다. 형식을 확인하거나 이미 추가된 계정일 수 있습니다.');
         return;
       }
 
-      console.log('계정 수:', accounts.length);
+      // UI 업데이트
+      updateAccountsList();
+      document.getElementById('input').value = ''; // 입력란 초기화
+      document.getElementById('status').textContent = `✅ ${newAccountsCount}개 계정이 추가되었습니다!`;
+      
+      setTimeout(() => {
+        document.getElementById('status').textContent = '';
+      }, 3000);
+    }
+
+    function updateAccountsList() {
+      const listDiv = document.getElementById('accountsList');
+      const totalCount = document.getElementById('totalCount');
+      
+      if (accountsData.length === 0) {
+        listDiv.textContent = '아직 추가된 계정이 없습니다.';
+      } else {
+        listDiv.innerHTML = accountsData.map(acc => `<div>${acc.name} (${acc.username})</div>`).join('');
+      }
+      
+      totalCount.textContent = accountsData.length;
+    }
+
+    function clearAll() {
+      if (accountsData.length === 0) {
+        alert('초기화할 데이터가 없습니다.');
+        return;
+      }
+      
+      if (confirm('모든 추가된 계정을 삭제하시겠습니까?')) {
+        allAccounts.clear();
+        accountsData = [];
+        updateAccountsList();
+        document.getElementById('status').textContent = '✅ 모든 데이터가 초기화되었습니다.';
+        setTimeout(() => {
+          document.getElementById('status').textContent = '';
+        }, 3000);
+      }
+    }
+
+    function generateChecker() {
+      if (accountsData.length === 0) {
+        alert('먼저 팔로잉 목록을 추가해주세요!');
+        return;
+      }
+
+      console.log('총 계정 수:', accountsData.length);
 
       // 데이터 처리
-      const dataString = JSON.stringify(accounts);
+      const dataString = JSON.stringify(accountsData);
       const encodedData = btoa(encodeURIComponent(dataString));
       
       // 새 문서 생성
@@ -162,7 +256,7 @@ setInterval(() => {
       const link = document.getElementById('download-link');
       link.href = url;
       link.style.display = 'inline-block';
-      link.textContent = '보호된 확인기 다운로드 (checker.html)';
+      link.textContent = `통합 확인기 다운로드 (총 ${accountsData.length}개 계정 포함)`;
       
       console.log('다운로드 링크 생성 완료');
     }
