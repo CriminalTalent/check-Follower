@@ -52,6 +52,13 @@
   <a id="download-link" download="checker.html"></a>
 
   <script>
+    // 암호화 함수 (XOR + Base64)
+    function encryptData(text) {
+      const key = 42;
+      const encrypted = text.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+      return btoa(encrypted);
+    }
+
     function generateChecker() {
       const input = document.getElementById('input').value;
       const lines = input.split('\n');
@@ -68,9 +75,10 @@
       }
 
       const formatted = accounts.join('\n\n');
+      const encryptedData = encryptData(formatted);
 
-      const template = `
-<!DOCTYPE html>
+      // 보호된 HTML 생성
+      const template = `<!DOCTYPE html>
 <html lang="ko">
 <head>
   <meta charset="UTF-8">
@@ -110,11 +118,24 @@
   <pre id="result"></pre>
 
   <script>
-    const targets = \`${formatted}\`.split(/\\n\\n+/).map(block => block.trim());
+    // 암호화된 데이터
+    const _0x1a2b = '${encryptedData}';
+    
+    // 복호화 함수
+    function _0x2c3d(data) {
+      const key = 42;
+      return atob(data).split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+    }
+    
+    // 실제 targets 데이터 복원
+    function _0x3e4f() {
+      return _0x2c3d(_0x1a2b).split(/\\n\\n+/).map(block => block.trim());
+    }
 
     function check() {
       const userLines = document.getElementById('userInput').value.split('\\n').map(x => x.trim());
       const matches = [];
+      const targets = _0x3e4f();
 
       for (const t of targets) {
         const lines = t.split('\\n');
@@ -125,17 +146,38 @@
 
       document.getElementById('result').textContent = matches.join('\\n\\n') || '겹치는 계정이 없습니다.';
     }
-  <\/script>
+
+    // 개발자 도구 차단
+    document.addEventListener('contextmenu', e => e.preventDefault());
+    document.addEventListener('keydown', e => {
+      if(e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.key === 'u')) {
+        e.preventDefault();
+      }
+    });
+    
+    // 개발자 도구 감지
+    let devtools = {open: false, orientation: null};
+    const threshold = 160;
+    
+    setInterval(() => {
+      if (window.outerHeight - window.innerHeight > threshold || window.outerWidth - window.innerWidth > threshold) {
+        if (!devtools.open) {
+          devtools.open = true;
+          document.body.style.display = 'none';
+          document.body.innerHTML = '<div style="text-align:center;margin-top:200px;font-size:24px;">⚠️ 접근이 제한되었습니다.</div>';
+        }
+      }
+    }, 500);
+  <\\/script>
 </body>
-</html>
-`;
+</html>`;
 
       const blob = new Blob([template], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const link = document.getElementById('download-link');
       link.href = url;
       link.style.display = 'inline-block';
-      link.textContent = '확인기 다운로드 (checker.html)';
+      link.textContent = '보호된 확인기 다운로드 (checker.html)';
     }
   </script>
 </body>
