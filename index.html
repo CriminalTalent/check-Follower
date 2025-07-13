@@ -52,60 +52,51 @@
   <a id="download-link" download="checker.html"></a>
 
   <script>
-    // 암호화 함수 (XOR + Base64)
-    function encryptData(text) {
-      const key = 42;
-      const encrypted = text.split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
-      return btoa(encrypted);
-    }
-
     function generateChecker() {
+      console.log('generateChecker 호출됨');
+      
       const input = document.getElementById('input').value;
+      if (!input.trim()) {
+        alert('입력된 내용이 없습니다!');
+        return;
+      }
+      
       const lines = input.split('\n');
-
       const accounts = [];
+      
       for (let i = 0; i < lines.length; i++) {
         if (lines[i + 2] && lines[i + 2].includes('나를 팔로우합니다')) {
           const name = lines[i]?.trim() || '';
           const username = lines[i + 1]?.trim() || '';
           if (name && username) {
-            accounts.push(`${name}\n${username}`);
+            accounts.push({name: name, username: username});
           }
         }
       }
 
-      const formatted = accounts.join('\n\n');
-      const encryptedData = encryptData(formatted);
+      if (accounts.length === 0) {
+        alert('팔로잉 계정을 찾을 수 없습니다. 형식을 확인해주세요.');
+        return;
+      }
 
-      // 보호된 HTML 생성
-      const template = `<!DOCTYPE html>
-<html lang="ko">
-<head>
+      console.log('계정 수:', accounts.length);
+
+      // 데이터 처리
+      const dataString = JSON.stringify(accounts);
+      const encodedData = btoa(encodeURIComponent(dataString));
+      
+      // 새 문서 생성
+      const newDoc = document.implementation.createHTMLDocument('겹치는 계정 확인기');
+      
+      // HTML 구조 생성
+      newDoc.documentElement.innerHTML = `<head>
   <meta charset="UTF-8">
   <title>겹치는 계정 확인기</title>
   <style>
-    body {
-      background: white;
-      font-family: sans-serif;
-      color: #333;
-      padding: 30px;
-    }
-    textarea {
-      width: 100%;
-      height: 200px;
-    }
-    button {
-      background-color: #888;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 1em;
-      margin-top: 10px;
-      cursor: pointer;
-    }
-    button:hover {
-      background-color: #555;
-    }
+    body { background: white; font-family: sans-serif; color: #333; padding: 30px; }
+    textarea { width: 100%; height: 200px; }
+    button { background-color: #888; color: white; border: none; padding: 10px 20px; font-size: 1em; margin-top: 10px; cursor: pointer; }
+    button:hover { background-color: #555; }
   </style>
 </head>
 <body>
@@ -116,68 +107,64 @@
   <button onclick="check()">겹치는 계정 확인</button>
   <h3>결과</h3>
   <pre id="result"></pre>
+</body>`;
 
-  <script>
-    // 암호화된 데이터
-    const _0x1a2b = '${encryptedData}';
-    
-    // 복호화 함수
-    function _0x2c3d(data) {
-      const key = 42;
-      return atob(data).split('').map(c => String.fromCharCode(c.charCodeAt(0) ^ key)).join('');
+      // script 요소 생성 및 추가
+      const script = newDoc.createElement('script');
+      script.textContent = `
+const DATA = ${JSON.stringify(encodedData)};
+
+function getData() {
+  try {
+    const decoded = decodeURIComponent(atob(DATA));
+    return JSON.parse(decoded);
+  } catch(e) {
+    return [];
+  }
+}
+
+function check() {
+  const userLines = document.getElementById('userInput').value.split('\\n').map(x => x.trim());
+  const matches = [];
+  const accounts = getData();
+
+  for (const account of accounts) {
+    if (userLines.includes(account.username)) {
+      matches.push(account.name + '\\n' + account.username);
     }
-    
-    // 실제 targets 데이터 복원
-    function _0x3e4f() {
-      return _0x2c3d(_0x1a2b).split(/\\n\\n+/).map(block => block.trim());
-    }
+  }
 
-    function check() {
-      const userLines = document.getElementById('userInput').value.split('\\n').map(x => x.trim());
-      const matches = [];
-      const targets = _0x3e4f();
+  document.getElementById('result').textContent = matches.join('\\n\\n') || '겹치는 계정이 없습니다.';
+}
 
-      for (const t of targets) {
-        const lines = t.split('\\n');
-        if (lines.length >= 2 && userLines.includes(lines[1])) {
-          matches.push(t);
-        }
-      }
+document.addEventListener('contextmenu', e => e.preventDefault());
+document.addEventListener('keydown', e => {
+  if(e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.key === 'u')) {
+    e.preventDefault();
+  }
+});
 
-      document.getElementById('result').textContent = matches.join('\\n\\n') || '겹치는 계정이 없습니다.';
-    }
+setInterval(() => {
+  if (window.outerHeight - window.innerHeight > 160 || window.outerWidth - window.innerWidth > 160) {
+    document.body.innerHTML = '<div style="text-align:center;margin-top:200px;font-size:24px;">⚠️ 접근이 제한되었습니다.</div>';
+  }
+}, 500);
+`;
+      
+      newDoc.body.appendChild(script);
+      
+      // HTML 문자열로 변환
+      const finalHtml = '<!DOCTYPE html>' + newDoc.documentElement.outerHTML;
 
-    // 개발자 도구 차단
-    document.addEventListener('contextmenu', e => e.preventDefault());
-    document.addEventListener('keydown', e => {
-      if(e.key === 'F12' || (e.ctrlKey && e.shiftKey && e.key === 'I') || (e.ctrlKey && e.key === 'u')) {
-        e.preventDefault();
-      }
-    });
-    
-    // 개발자 도구 감지
-    let devtools = {open: false, orientation: null};
-    const threshold = 160;
-    
-    setInterval(() => {
-      if (window.outerHeight - window.innerHeight > threshold || window.outerWidth - window.innerWidth > threshold) {
-        if (!devtools.open) {
-          devtools.open = true;
-          document.body.style.display = 'none';
-          document.body.innerHTML = '<div style="text-align:center;margin-top:200px;font-size:24px;">⚠️ 접근이 제한되었습니다.</div>';
-        }
-      }
-    }, 500);
-  <\\/script>
-</body>
-</html>`;
-
-      const blob = new Blob([template], { type: 'text/html' });
+      // 다운로드
+      const blob = new Blob([finalHtml], { type: 'text/html' });
       const url = URL.createObjectURL(blob);
       const link = document.getElementById('download-link');
       link.href = url;
       link.style.display = 'inline-block';
       link.textContent = '보호된 확인기 다운로드 (checker.html)';
+      
+      console.log('다운로드 링크 생성 완료');
     }
   </script>
 </body>
